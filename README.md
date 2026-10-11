@@ -1,17 +1,20 @@
-# ElseMail Keeper — Railway cron, proti 6h-e FS backend run trigger
+# ElseMail Keeper — Railway cron, proti 5 min-e FS backend check
 
-`elsemail-fs` backend proti run max ~6h bache. Ei cron proti 6h-e GitHub
-dispatch dey (notun run), ager-ta expire hoy. Idempotent: fresh run active
-thakle skip, stuck run replace kore.
+`elsemail-fs` backend off ache kina dekhe; online thakle kichu kore na,
+offline thakle online kore. Check loop: mot 6 bar, 5 min por por (~30 min).
+Run boyos 5.5h+ hole proactive replacement (zero downtime).
 
-## Railway deploy (5 min)
+## Railway deploy
 
 1. Railway -> New Project -> Deploy from GitHub repo -> `elsemail-keeper`
-2. Service Settings -> **Cron Schedule**: `5 */6 * * *` (proti 6h)
+2. Service Settings -> **Cron Schedule**: `*/5 * * * *` (proti 5 min)
 3. Variables -> add:
    - `GH_TOKEN` = PAT with Actions read+write on `elsemail-fs`
      (classic scope `repo` + `workflow`, or fine-grained Actions RW)
-4. Deploy -> Cron runs -> Logs-e `health OK` dekho
+4. Deploy -> Cron runs -> Logs dekho (`online, valo` / `ONLINE after check`)
+
+Optional vars: `MAX_AGE_MIN=330` `START_GRACE_MIN=12` `CHECKS=6`
+`INTERVAL_MIN=5` `HEALTH_URL=...`
 
 ## Local test
 
@@ -21,4 +24,5 @@ GH_TOKEN=ghp_... node trigger.js
 
 ## Khoroch
 
-Cron proti run ~5 min chole (health wait) — Railway usage samanno.
+Online thakle proti run koyek second-e sesh. Offline hole max ~30 min
+wait loop chole. Proti 5 min-e cron — usage samanno.

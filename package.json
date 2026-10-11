@@ -1,0 +1,12 @@
+{
+  "name": "elsemail-keeper",
+  "version": "1.0.0",
+  "description": "Railway cron keeper - triggers elsemail-fs backend run every 6h",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node trigger.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

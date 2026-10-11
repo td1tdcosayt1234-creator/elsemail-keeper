@@ -4,7 +4,8 @@
   "description": "Railway cron keeper - triggers elsemail-fs backend run every 6h",
   "type": "commonjs",
   "scripts": {
-    "start": "node trigger.js"
+    "start": "node server.js",
+    "keeper": "node trigger.js"
   },
   "engines": {
     "node": ">=18"

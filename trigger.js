@@ -78,8 +78,10 @@ const waitOnline = async (gapMin, why) => {
       if (d.status !== 204) throw new Error('dispatch failed: ' + d.status);
       console.log('replacement dispatched, 2m tight watch...');
       if (!(await waitOnline(gap, '2m watch'))) throw new Error(`still unverified after ${CHECKS} checks`);
+      return TIGHT_INTERVAL_MIN;
     } else {
       console.log('online, valo — skip');
+      return INTERVAL_MIN;
     }
     return;
   }

@@ -1,8 +1,31 @@
-# ElseMail Keeper — Railway cron, proti 5 min-e FS backend check
+# ElseMail Keeper — console + auto-heal for FS backend (Railway web service)
 
-`elsemail-fs` backend off ache kina dekhe; online thakle kichu kore na,
-offline thakle online kore. Check loop: mot 6 bar, normal 5 min por por.
-6h zone (run boyos 5.5h+ / kono run nai) + offline hole 2 min por por check.
+Persistent service: proti 5 min-e (6h zone/offline-e 2 min) FS backend check
+kore; online thakle skip, offline thakle cancel + dispatch. Dashboard `/`
+(console page for checking), JSON `/api/status`, Railway health `/healthz`.
+
+## Railway deploy
+
+1. Railway -> New Project -> Deploy from GitHub repo -> `elsemail-keeper`
+2. Variables -> add:
+   - `GH_TOKEN` = PAT with Actions read+write on `elsemail-fs`
+     (classic scope `repo` + `workflow`, or fine-grained Actions RW)
+   - `STATUS_KEY` = (optional) dashboard lock key, tahole `?key=...` lagbe
+3. Deploy -> generated domain-e console kholo
+
+`PORT` Railway nije dey. No cron setup needed — server nijer schedule-e chole.
+
+Optional vars: `MAX_AGE_MIN=330` `START_GRACE_MIN=12` `CHECKS=6`
+`INTERVAL_MIN=5` `TIGHT_INTERVAL_MIN=2` `HEALTH_URL=...`
+
+## Local test
+
+```bash
+GH_TOKEN=ghp_... PORT=8090 node server.js
+# http://localhost:8090/  +  http://localhost:8090/api/status
+```
+
+One-shot cron alternative: `GH_TOKEN=... node trigger.js`.
 
 ## Railway deploy
 

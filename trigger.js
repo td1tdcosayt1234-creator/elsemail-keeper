@@ -2,10 +2,10 @@
 // dekhe; online thakle kichu kore na, offline thakle online kore.
 //
 // Flow:
-//   - health OK                    -> "online, valo", exit 0
-//   - health DOWN + run starting   -> wait loop (6 bar x 5 min), OK hole exit 0
-//   - health DOWN + stuck/no run   -> cancel + dispatch, wait loop
-//   - run boyos > MAX_AGE_MIN      -> proactive replacement dispatch (zero downtime)
+//   - health OK + fresh run        -> "online, valo", exit 0
+//   - health OK + run 5.5h+        -> proactive replacement + 2m tight watch
+//   - health DOWN                  -> cancel stuck + dispatch, 2m/5m watch loop
+//   - 6h periye gele check interval 2m (TIGHT_INTERVAL_MIN)
 //   - 6 check-eo DOWN              -> exit 1 (Railway failure alert)
 //
 // Env:
@@ -24,6 +24,7 @@ const MAX_AGE_MIN = parseFloat(process.env.MAX_AGE_MIN || '330');
 const START_GRACE_MIN = parseFloat(process.env.START_GRACE_MIN || '12');
 const CHECKS = parseInt(process.env.CHECKS || '6', 10);
 const INTERVAL_MIN = parseFloat(process.env.INTERVAL_MIN || '5');
+const TIGHT_INTERVAL_MIN = parseFloat(process.env.TIGHT_INTERVAL_MIN || '2');
 const HEALTH_URL = process.env.HEALTH_URL || 'https://fs.elsemail.indevs.in/health';
 const GH = process.env.GH_TOKEN;
 if (!GH) { console.error('GH_TOKEN env missing'); process.exit(1); }
@@ -55,31 +56,35 @@ const getWorkflowId = async () => {
   if (!wf) throw new Error('no workflow found');
   return wf.id;
 };
-const waitOnline = async () => {
+const waitOnline = async (gapMin, why) => {
   for (let i = 1; i <= CHECKS; i++) {
-    await sleep(INTERVAL_MIN * 60000);
-    if (await health()) { console.log(`online after check ${i}/${CHECKS}`); return true; }
-    console.log(`check ${i}/${CHECKS}: still off...`);
+    await sleep(gapMin * 60000);
+    if (await health()) { console.log(`online after check ${i}/${CHECKS} (${why})`); return true; }
+    console.log(`check ${i}/${CHECKS} (${why}): still off...`);
   }
   return false;
 };
 (async () => {
-  if (await health()) {
-    const active = await getActive();
-    if (active && ageMin(active.created_at) > MAX_AGE_MIN) {
+  const online = await health();
+  const active = await getActive();
+  const age = active ? ageMin(active.created_at) : null;
+  const expired = age === null || age > MAX_AGE_MIN; // 6h zone: no run or expiring
+  const gap = expired ? TIGHT_INTERVAL_MIN : INTERVAL_MIN; // 6h periye 2m por por
+  if (online) {
+    if (active && age > MAX_AGE_MIN) {
       console.log(`online but run ${active.id} expiring, proactive replacement...`);
       const wfid = await getWorkflowId();
       const d = await gh('POST', `/repos/${OWNER}/${REPO}/actions/workflows/${wfid}/dispatches`, { ref: 'main' });
       if (d.status !== 204) throw new Error('dispatch failed: ' + d.status);
-      console.log('replacement dispatched');
+      console.log('replacement dispatched, 2m tight watch...');
+      if (!(await waitOnline(gap, '2m watch'))) throw new Error(`still unverified after ${CHECKS} checks`);
     } else {
       console.log('online, valo — skip');
     }
     return;
   }
   console.log('OFFLINE detected');
-  let active = await getActive();
-  if (active && ageMin(active.created_at) < START_GRACE_MIN) {
+  if (active && age < START_GRACE_MIN) {
     console.log(`run ${active.id} just started, waiting...`);
   } else {
     if (active) {
@@ -91,5 +96,5 @@ const waitOnline = async () => {
     if (d.status !== 204) throw new Error('dispatch failed: ' + d.status + ' ' + d.text);
     console.log('new run dispatched, waiting for online...');
   }
-  if (!(await waitOnline())) throw new Error(`still offline after ${CHECKS} checks`);
+  if (!(await waitOnline(gap, gap === TIGHT_INTERVAL_MIN ? '2m watch' : '5m watch'))) throw new Error(`still offline after ${CHECKS} checks`);
 })().catch((e) => { console.error('KEEPER FAIL: ' + e.message); process.exit(1); });

@@ -1,8 +1,8 @@
 # ElseMail Keeper — Railway cron, proti 5 min-e FS backend check
 
 `elsemail-fs` backend off ache kina dekhe; online thakle kichu kore na,
-offline thakle online kore. Check loop: mot 6 bar, 5 min por por (~30 min).
-Run boyos 5.5h+ hole proactive replacement (zero downtime).
+offline thakle online kore. Check loop: mot 6 bar, normal 5 min por por.
+6h zone (run boyos 5.5h+ / kono run nai) + offline hole 2 min por por check.
 
 ## Railway deploy
 
@@ -14,7 +14,7 @@ Run boyos 5.5h+ hole proactive replacement (zero downtime).
 4. Deploy -> Cron runs -> Logs dekho (`online, valo` / `ONLINE after check`)
 
 Optional vars: `MAX_AGE_MIN=330` `START_GRACE_MIN=12` `CHECKS=6`
-`INTERVAL_MIN=5` `HEALTH_URL=...`
+`INTERVAL_MIN=5` `TIGHT_INTERVAL_MIN=2` `HEALTH_URL=...`
 
 ## Local test
 

@@ -1,51 +1,62 @@
-# ElseMail Keeper — console + auto-heal for FS backend (Railway web service)
+# ElseMail Keeper — console + auto-heal for FS backend
 
-Persistent service: proti 5 min-e (6h zone/offline-e 2 min) FS backend check
-kore; online thakle skip, offline thakle cancel + dispatch. Dashboard `/`
-(console page for checking), JSON `/api/status`, Railway health `/healthz`.
+Persistent Railway web service. Proti 5 min-e (6h zone / offline-e 2 min
+por por) `fs.elsemail.indevs.in` check kore: online thakle skip, offline
+thakle stuck run cancel + notun run dispatch. Run boyos 5.5h+ hole
+proactive replacement — zero downtime.
+
+## Dashboard (for checking)
+
+* `/` — console page: status dot, active run, recent runs table, history
+  (60s auto-refresh)
+* `/api/status` — same data as JSON
+* `/healthz` — Railway healthcheck (`ok`)
 
 ## Railway deploy
 
 1. Railway -> New Project -> Deploy from GitHub repo -> `elsemail-keeper`
-2. Variables -> add:
-   - `GH_TOKEN` = PAT with Actions read+write on `elsemail-fs`
-     (classic scope `repo` + `workflow`, or fine-grained Actions RW)
-   - `STATUS_KEY` = (optional) dashboard lock key, tahole `?key=...` lagbe
-3. Deploy -> generated domain-e console kholo
+2. Variables:
+   - `GH_TOKEN` (required) — PAT with Actions read+write on `elsemail-fs`
+     (classic `repo` + `workflow`, or fine-grained Actions RW)
+   - `STATUS_KEY` (optional) — set korle dashboard-e `?key=...` lagbe
+   - `ALERT_URL` (optional) — Discord webhook / alert receiver URL.
+     Offline/online/dispatch/fail-e JSON `{content, text}` POST jay
+3. Deploy -> generated domain-e console kholo. No cron setup needed.
 
-`PORT` Railway nije dey. No cron setup needed — server nijer schedule-e chole.
+`PORT` Railway nije dey.
 
-Optional vars: `MAX_AGE_MIN=330` `START_GRACE_MIN=12` `CHECKS=6`
-`INTERVAL_MIN=5` `TIGHT_INTERVAL_MIN=2` `HEALTH_URL=...`
+## Env reference
 
-## Local test
+| Name | Default | Ki |
+|---|---|---|
+| `GH_TOKEN` | — | required |
+| `STATUS_KEY` | empty (open) | dashboard lock |
+| `ALERT_URL` | empty (off) | webhook alerts |
+| `OWNER` / `REPO` | td1tdcosayt1234-creator / elsemail-fs | target repo |
+| `MAX_AGE_MIN` | 330 | expiring run threshold |
+| `START_GRACE_MIN` | 12 | starting run wait |
+| `CHECKS` | 6 | mot koybar check |
+| `INTERVAL_MIN` | 5 | normal gap |
+| `TIGHT_INTERVAL_MIN` | 2 | 6h-zone/offline gap |
+| `HEALTH_URL` | fs.../health | checked URL |
+
+## Local
 
 ```bash
 GH_TOKEN=ghp_... PORT=8090 node server.js
-# http://localhost:8090/  +  http://localhost:8090/api/status
+npm test            # unit tests (no network)
+GH_TOKEN=ghp_... node trigger.js   # one-shot cron alternative
 ```
 
-One-shot cron alternative: `GH_TOKEN=... node trigger.js`.
+## Files
 
-## Railway deploy
+* `server.js` — web service + loop + dashboard
+* `trigger.js` — one-shot version (same rules)
+* `lib.js` — shared: API, `decide()` rules, alerts
+* `test/keeper.test.js` — rule tests
 
-1. Railway -> New Project -> Deploy from GitHub repo -> `elsemail-keeper`
-2. Service Settings -> **Cron Schedule**: `*/5 * * * *` (proti 5 min)
-3. Variables -> add:
-   - `GH_TOKEN` = PAT with Actions read+write on `elsemail-fs`
-     (classic scope `repo` + `workflow`, or fine-grained Actions RW)
-4. Deploy -> Cron runs -> Logs dekho (`online, valo` / `ONLINE after check`)
+## Troubleshooting
 
-Optional vars: `MAX_AGE_MIN=330` `START_GRACE_MIN=12` `CHECKS=6`
-`INTERVAL_MIN=5` `TIGHT_INTERVAL_MIN=2` `HEALTH_URL=...`
-
-## Local test
-
-```bash
-GH_TOKEN=ghp_... node trigger.js
-```
-
-## Khoroch
-
-Online thakle proti run koyek second-e sesh. Offline hole max ~30 min
-wait loop chole. Proti 5 min-e cron — usage samanno.
+* Console 401 — `STATUS_KEY` set ache, `?key=` dao
+* `dispatch failed 403/404` — token-e Actions permission nai
+* Railway restart loop — `GH_TOKEN` missing (logs-e dekho)
